@@ -1,5 +1,6 @@
 ################     Overview       ##################
-Inputs: Sorted SAM file by 
+Inputs: Sorted SAM file by position, UMIs, output file path
+Outputs: SAM file with trimmed PCR duplicate
 
 ################ High Level Functions ################
 
@@ -9,13 +10,21 @@ def get_umi(header: str) -> str:
 Input: NS500451:154:HWKTMBGXX:1:11101:24260:1121:CTGTTCAC
 Expected output: CTGTTCAC
 
-def get_pos(position_orig: int, foward_stranded: bool, cigar: str) -> float:
+def get_pos_updated(position_orig: int, foward_stranded: bool, cigar: str) -> float:
     '''Takes the original position of the alignment, its strand, and cigar string and outputs the adjusted position index for soft clippings.''
-    return average_q_score
+    return updated_pos
 Input: 10, true, 3S5M2S
 Expected output: 7
 Input: 10, false, 3S5M2S
 Expected output: 17
+
+def get_pos_original(position_updated: int, foward_stranded: bool, cigar: str) -> float:
+    '''Takes the updated position of the alignment, its strand, and cigar string and outputs the original position index without soft clipping adjustments.''
+    return orig_pos
+Input: 7, true, 3S5M2S
+Expected output: 10
+Input: 17, false, 3S5M2S
+Expected output: 10
 
 ################      Pseudocode     #################
 input sorted sam file, output file, umi list
@@ -33,7 +42,7 @@ open a reference file to write:
                     forward_stranded = false
                 position_orig = column 4   
                 cigar = column 6
-                replace column 4 value with get_pos(position_orig,foward_stranded,cigar)
+                replace column 4 value with get_pos_updated(position_orig,foward_stranded,cigar)
                 write line to reference file
 
     call samtools sort on reference file (for sorting on CORRECT position)
@@ -73,6 +82,8 @@ open the reference file to read, output_file to write:
             query_chromosome = chromosome
             query_umi = umi
             query_forward_stranded = forward_stranded
+            
+            replace column 4 value with get_pos_original(position,foward_stranded,cigar)
             write line to output file
 
 delete reference file
