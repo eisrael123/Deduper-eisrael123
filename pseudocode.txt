@@ -1,0 +1,84 @@
+################     Overview       ##################
+Inputs: Sorted SAM file by 
+
+################ High Level Functions ################
+
+def get_umi(header: str) -> str:
+    '''Takes a SAM read header and returns the corresponding UMI attached to that header. If UMI is not found, return None.'''
+    return UMI
+Input: NS500451:154:HWKTMBGXX:1:11101:24260:1121:CTGTTCAC
+Expected output: CTGTTCAC
+
+def get_pos(position_orig: int, foward_stranded: bool, cigar: str) -> float:
+    '''Takes the original position of the alignment, its strand, and cigar string and outputs the adjusted position index for soft clippings.''
+    return average_q_score
+Input: 10, true, 3S5M2S
+Expected output: 7
+Input: 10, false, 3S5M2S
+Expected output: 17
+
+################      Pseudocode     #################
+input sorted sam file, output file, umi list
+
+open a reference file to write:
+    for line in sorted_sam_file: 
+        if line starts with @:
+            write line to reference file
+        else:
+            header = header of line 
+            if get_umi(header) is in umi list:
+                if read is not reverse complemented:
+                    forward_stranded = true
+                else:
+                    forward_stranded = false
+                position_orig = column 4   
+                cigar = column 6
+                replace column 4 value with get_pos(position_orig,foward_stranded,cigar)
+                write line to reference file
+
+    call samtools sort on reference file (for sorting on CORRECT position)
+
+open the reference file to read, output_file to write:
+    query_forward_stranded = None
+    query_position = None
+    query_chromosome = None
+    query_UMI = None
+
+    for line in reference file:
+        if line starts with @:
+            write line to reference file
+            continue
+        
+        if query_forward_stranded and query_position and query_chromosome = None and query_UMI = None:  #First non-header line detected, write to file
+            if read is not reverse complemented:
+                query_forward_stranded = true
+            else:
+                query_forward_stranded = false           
+            query_position = column 4   
+            query_chromosome = column 3 
+            query_umi = get_umi(line)
+            write line to output file
+            continue
+        
+        if read is not reverse complemented:
+                forward_stranded = true
+            else:
+                forward_stranded = false           
+            position = column 4   
+            chromosome = column 3 
+            umi = get_umi(line)
+
+        if query_forward_stranded != foward_stranded or query_position != position or query_chromsome != chromosome: #New unique line detected, write to file
+            query_position = position  
+            query_chromosome = chromosome
+            query_umi = umi
+            query_forward_stranded = forward_stranded
+            write line to output file
+
+delete reference file
+
+
+
+
+    
+        
