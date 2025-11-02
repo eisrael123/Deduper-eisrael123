@@ -57,26 +57,8 @@ open a reference file to write:
         if k not in seen_keys: #new read detected, write to file
             write line to sam_out
             seen_keys.add(k)
-        else: # duplicate, skip
-            continue
-
-
-
-
-
         
-        
-        else:
-            header = header of line 
-            if get_umi(header) is in umi list:
-                if read is not reverse complemented:
-                    forward_stranded = true
-                else:
-                    forward_stranded = false
-                position_orig = column 4   
-                cigar = column 6
-                replace column 4 value with get_pos_updated(position_orig,foward_stranded,cigar)
-                write line to reference file
 
-    call samtools sort on reference file (for sorting on CORRECT position)
+
+
 
