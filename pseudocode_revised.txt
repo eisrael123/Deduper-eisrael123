@@ -1,0 +1,82 @@
+################     Overview       ##################
+Inputs: Sorted SAM file by position, UMIs, output file path
+Outputs: SAM file with trimmed PCR duplicate
+
+################ High Level Functions ################
+
+def get_umi(header: str) -> str:
+    '''Takes a SAM read header and returns the corresponding UMI attached to that header. If UMI is not found, return None.'''
+    return UMI
+Input: NS500451:154:HWKTMBGXX:1:11101:24260:1121:CTGTTCAC
+Expected output: CTGTTCAC
+
+def get_pos_updated(position_orig: int, foward_stranded: bool, cigar: str) -> float:
+    '''Takes the original position of the alignment, its strand, and cigar string and outputs the adjusted position index for soft clippings.''
+    return updated_pos
+Input: 10, true, 3S5M2S
+Expected output: 7
+Input: 10, false, 3S5M2S
+Expected output: 17
+
+################      Pseudocode     #################
+input sorted_sam_file, output_file, umi_list (and include help message for argparse)
+
+open a reference file to write:
+    current_rname = None
+    seen_keys = empty hash/set
+
+    for line in sorted_sam_file: 
+        if line starts with @: #header line, write to output automatically
+            write line to output_file
+            continue 
+        
+        header = column 1
+        flag = column 2
+        rname = column 3 
+        pos = column 4
+        cigar = column 6 
+
+        if get_umi(header) not in umi_list: #unknown umi, skip
+            continue
+        
+        if current_rname is None: #first chromosome detected
+            current_rname = rname
+        else if rname != current_rname: #next chromosome detected, clear memory for previous chromosome
+            seen_keys.clear()
+            current_rname = rname
+
+        if ((flag & 16) == 16): #if read is reverse complemented
+            forward_stranded = false
+        else:
+            forward_stranded = true
+
+        pos_updated = get_pos_updated(pos,foward_stranded,cigar)
+
+        k = (rname, pos_updated, forward_stranded)
+
+        if k not in seen_keys: #new read detected, write to file
+            write line to sam_out
+            seen_keys.add(k)
+        else: # duplicate, skip
+            continue
+
+
+
+
+
+        
+        
+        else:
+            header = header of line 
+            if get_umi(header) is in umi list:
+                if read is not reverse complemented:
+                    forward_stranded = true
+                else:
+                    forward_stranded = false
+                position_orig = column 4   
+                cigar = column 6
+                replace column 4 value with get_pos_updated(position_orig,foward_stranded,cigar)
+                write line to reference file
+
+    call samtools sort on reference file (for sorting on CORRECT position)
+
