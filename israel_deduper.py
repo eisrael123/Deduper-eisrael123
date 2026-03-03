@@ -19,8 +19,8 @@ def get_pos_updated(position_orig: int, forward_stranded: bool, cigar: str) -> i
 
     1.  Input: 10, true, 3S5M2S -> Output: 7
         (Forward strand: pos - leading_soft_clip = 10 - 3 = 7)
-    2.  Input: 10, false, 3S5M2S -> Output: 17
-        (Reverse strand: pos + ref_span + trailing_soft_clip = 10 + 5 + 2 = 17)
+    2.  Input: 10, false, 3S5M2S -> Output: 16
+        (Reverse strand: (pos + ref_span - 1) + trailing_soft_clip = (10 + 5 - 1) + 2 = 16)
     """
     
     # Use regex to parse CIGAR string 
@@ -33,13 +33,13 @@ def get_pos_updated(position_orig: int, forward_stranded: bool, cigar: str) -> i
         #Check the first operation
         first_op_val_str, first_op_code = cigar_ops[0]
         if first_op_code == 'S':
-            #Subtract leading soft clips
+            #Subtract leading soft clips from the reported start
             return position_orig - int(first_op_val_str)
         else:
-            #No leading soft clips
+            #No leading soft clips; 5' end is the reported start
             return position_orig
     else:
-        #Reverse stranded
+        #Reverse stranded: 5' end is at the rightmost aligned base
         pos_updated = position_orig
         
         #Operations that consume the reference sequence
@@ -50,10 +50,12 @@ def get_pos_updated(position_orig: int, forward_stranded: bool, cigar: str) -> i
             if code in ref_consuming_ops:
                 pos_updated += int(val_str)
         
-        #Check the last operation for trailing soft clips
+        #Convert from start+span to the last reference-consuming base
+        pos_updated -= 1
+        
+        #Check the last operation for trailing soft clips (extended 5' end)
         last_op_val_str, last_op_code = cigar_ops[-1]
         if last_op_code == 'S':
-            #Add trailing soft clips
             pos_updated += int(last_op_val_str)
             
         return pos_updated
@@ -62,8 +64,8 @@ def get_args():
     parser = argparse.ArgumentParser(
         description=(
             "Usage: israel_deduper.py [-h] [-f STRING] [-o STRING] [-u STRING]\n"
-            "Given a SAM file of uniquely mapped reads, remove all PCR duplicates (retain only the first detected single copy of each read):\n"
-            "NOTE: This script assumes SAM file contains unique paired end reads, UMI length of 8, and uncompressed file inputs.\n"
+            "Given a SAM file of uniquely mapped single-end reads, remove all PCR duplicates (retain only the first detected single copy of each read).\n"
+            "UMIs are expected to be the last colon-separated field in the read name; reads with UMIs not in the provided list are skipped.\n"
         ),
         formatter_class=argparse.RawTextHelpFormatter
         )
@@ -146,16 +148,28 @@ def main():
             else:
                 duplicate_count += 1
 
-        print("\n--- Summary ---")
-        print(f"Header lines: \t{header_count}")
-        print(f"Total alignments processed: \t{total_alignments}")
-        print(f"Reads with wrong UMIs: \t{wrong_umi_count}")
-        print(f"Duplicates removed: \t{duplicate_count}")
-        print(f"Unique reads written: \t{unique_reads_count}")
-
-        print("\n--- Unique Reads Per Chromosome ---")
+        summary_lines = []
+        summary_lines.append("--- Summary ---")
+        summary_lines.append(f"Header lines:\t{header_count}")
+        summary_lines.append(f"Total alignments processed:\t{total_alignments}")
+        summary_lines.append(f"Reads with wrong UMIs:\t{wrong_umi_count}")
+        summary_lines.append(f"Duplicates removed:\t{duplicate_count}")
+        summary_lines.append(f"Unique reads written:\t{unique_reads_count}")
+        summary_lines.append("")
+        summary_lines.append("--- Unique Reads Per Chromosome ---")
         for chrom, count in chrom_counts.items():
-            print(f"{chrom}\t{count}")
+            summary_lines.append(f"{chrom}\t{count}")
+
+        # Print summary to stdout
+        print()
+        for line in summary_lines:
+            print(line)
+
+        # Also write a simple report file alongside the output SAM
+        report_path = args.outfile + ".report.txt"
+        with open(report_path, 'w') as report_out:
+            for line in summary_lines:
+                report_out.write(line + "\n")
 
 if __name__ == "__main__":
     main()
